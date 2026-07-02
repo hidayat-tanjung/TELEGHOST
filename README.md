@@ -1,4 +1,5 @@
 # 👻 TELEGHOST – Spyware Telegram Edition
+![Uploading 1000296415.png…]()
 
 TELEGHOST adalah spyware ringan berbasis Python yang dikendalikan sepenuhnya melalui bot Telegram.  
 Alat ini dibuat untuk tujuan **edukasi dan pengujian keamanan** di perangkat sendiri.
