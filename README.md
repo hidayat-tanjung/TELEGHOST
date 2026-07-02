@@ -1,93 +1,168 @@
-# 👻 TELEGHOST – Spyware Telegram Edition<img width="1254" height="1254" alt="1000296415" src="https://github.com/user-attachments/assets/7ca1e471-0399-444e-b067-1901748cd180" />
+# 👻 TELEGHOST – Spyware Telegram Edition
 
-
-TELEGHOST adalah spyware ringan berbasis Python yang dikendalikan sepenuhnya melalui bot Telegram.  
+**TELEGHOST** adalah spyware ringan berbasis Python yang dikendalikan sepenuhnya melalui bot Telegram.  
 Alat ini dibuat untuk tujuan **edukasi dan pengujian keamanan** di perangkat sendiri.
 
 ---
 
-## 🔍 Apa Itu TELEGHOST?
+## 📌 DAFTAR ISI
 
-TELEGHOST bekerja seperti hantu digital.  
-Lo kirim perintah lewat chat Telegram, dan target (HP/PC) menjalankannya tanpa curiga.  
-Semua hasil dikirim balik ke Telegram lo secara real-time.
-
-**Keunggulan utama:**
-- Tanpa dashboard – semua kontrol via Telegram.
-- Multi-platform – Windows, Linux, Android (Termux).
-- Real-time – hasil langsung masuk ke chat lo.
-- Stealth – berjalan di background tanpa ketahuan.
-- Auto-start – otomatis jalan saat boot.
-
----
-
-## 🧩 Fitur Lengkap
-
-| Fitur | Fungsi |
-|-------|--------|
-| Screenshot | Ambil gambar layar target |
-| Screen Recorder | Rekam layar target (video) |
-| Keylogger | Rekam semua ketikan target |
-| Rekam Mic | Rekam suara dari mikrofon |
-| Kamera | Ambil foto & video dari kamera |
-| GPS / Lokasi | Dapatkan lokasi target (IP geolocation) |
-| Remote Command | Jalankan perintah sistem |
-| Upload File | Ambil file dari target |
-| Download File | Kirim file ke target |
-| Notifikasi Otomatis | Alert tanpa perintah (aplikasi dibuka, kata sensitif, gerakan kamera, suara keras) |
-| Auto-Start | Jalan otomatis saat boot |
-| Stealth Mode | Berjalan di background tanpa ketahuan |
+1. [Persiapan Awal](#-persiapan-awal)
+2. [Instalasi di Windows](#-instalasi-di-windows)
+3. [Instalasi di Linux](#-instalasi-di-linux)
+4. [Instalasi di Termux (Android)](#-instalasi-di-termux-android)
+5. [Cara Konfigurasi](#-cara-konfigurasi)
+6. [Menjalankan TELEGHOST](#-menjalankan-teleghost)
+7. [Daftar Perintah Telegram](#-daftar-perintah-telegram)
+8. [Fitur Notifikasi Otomatis](#-fitur-notifikasi-otomatis)
+9. [Cara Menghentikan TELEGHOST](#-cara-menghentikan-teleghost)
+10. [Troubleshooting](#-troubleshooting)
+11. [Pesan dari XoXo](#-pesan-dari-xoxo)
 
 ---
 
-## ⚙️ Cara Kerja
+## 🔧 PERSIAPAN AWAL
 
-Target menjalankan TELEGHOST → TELEGHOST terhubung ke bot Telegram → Lo kirim perintah ke bot → Bot meneruskan ke TELEGHOST → TELEGHOST menjalankan perintah → Hasil dikirim balik ke bot → Lo lihat hasil di Telegram.
+### 1. Buat Bot Telegram
+- Buka Telegram, cari **@BotFather**
+- Kirim `/newbot` dan ikuti instruksi
+- Simpan **TOKEN** yang diberikan  
+  Contoh: `1234567890:ABCdefGHIjklMNOpqrsTUVwxyz`
+
+### 2. Dapatkan CHAT_ID
+- Kirim pesan apa pun ke bot yang baru lo buat
+- Akses URL di browser:
+  ```
+  https://api.telegram.org/bot<TOKEN>/getUpdates
+  ```
+- Cari `"chat":{"id":` dan catat angkanya  
+  Contoh: `123456789`
 
 ---
 
-## 🔧 Persiapan Awal
+## 🖥️ INSTALASI DI WINDOWS
 
-1. Buat bot Telegram melalui @BotFather, simpan **TOKEN**.
-2. Kirim pesan ke bot, lalu akses `https://api.telegram.org/bot<TOKEN>/getUpdates` untuk mendapatkan **CHAT_ID**.
+### Langkah 1: Install Python
+- Download Python dari [python.org](https://python.org)
+- Saat install, **centang** "Add Python to PATH"
 
----
+### Langkah 2: Download TELEGHOST
+```cmd
+git clone https://github.com/hidayat-tanjung/TELEGHOST.git
+cd TELEGHOST
+```
 
-## 📦 Dependensi
-
-TELEGHOST membutuhkan library Python:
-- telebot
-- pyautogui
-- opencv-python
-- pillow
-- numpy
-- pynput
-- pyaudio
-- psutil
-- requests
-
-Install dengan:
-```bash
+### Langkah 3: Install Dependensi
+```cmd
 pip install telebot pyautogui opencv-python pillow numpy pynput pyaudio psutil requests
+```
+
+### Langkah 4: Jalankan
+```cmd
+python teleghost.py
 ```
 
 ---
 
-## 🚀 Cara Jalankan
+## 🐧 INSTALASI DI LINUX
 
-1. Edit file `teleghost.py`, ganti `BOT_TOKEN` dan `CHAT_ID` dengan punya lo.
-2. Jalankan di target:
-   - Windows: `python teleghost.py`
-   - Linux: `python3 teleghost.py`
-   - Termux: `python teleghost.py &`
+### Langkah 1: Install Python & Git
+```bash
+sudo apt update
+sudo apt install python3 python3-pip git portaudio19-dev -y
+```
+
+### Langkah 2: Download TELEGHOST
+```bash
+git clone https://github.com/hidayat-tanjung/TELEGHOST.git
+cd TELEGHOST
+```
+
+### Langkah 3: Install Dependensi
+```bash
+pip3 install telebot pyautogui opencv-python pillow numpy pynput pyaudio psutil requests
+```
+
+### Langkah 4: Jalankan
+```bash
+python3 teleghost.py
+```
 
 ---
 
-## 📋 Daftar Perintah Telegram
+## 📱 INSTALASI DI TERMUX (ANDROID)
+
+### Langkah 1: Install Termux
+- Download dari **F-Droid** (bukan Play Store)
+- Buka Termux
+
+### Langkah 2: Update & Install Paket
+```bash
+pkg update && pkg upgrade -y
+pkg install python git termux-api -y
+```
+
+### Langkah 3: Download TELEGHOST
+```bash
+git clone https://github.com/hidayat-tanjung/TELEGHOST.git
+cd TELEGHOST
+```
+
+### Langkah 4: Install Dependensi
+```bash
+pip install telebot pyautogui opencv-python pillow numpy pynput pyaudio psutil requests
+```
+
+### Langkah 5: Jalankan
+```bash
+python teleghost.py &
+```
+(Tanda `&` agar berjalan di background)
+
+---
+
+## ⚙️ CARA KONFIGURASI
+
+Buka file `teleghost.py`, cari baris ini:
+
+```python
+BOT_TOKEN = "1234567890:ABCdefGHIjklMNOpqrsTUVwxyz"  # GANTI
+CHAT_ID = "123456789"  # GANTI
+```
+
+Ganti dengan token dan chat ID yang sudah lo dapatkan.
+
+---
+
+## 🚀 MENJALANKAN TELEGHOST
+
+### Di Windows
+```cmd
+python teleghost.py
+```
+
+### Di Linux
+```bash
+python3 teleghost.py
+```
+
+### Di Termux
+```bash
+python teleghost.py &
+```
+
+### Agar berjalan di background (Linux/Termux)
+```bash
+nohup python teleghost.py > /dev/null 2>&1 &
+```
+
+---
+
+## 📋 DAFTAR PERINTAH TELEGRAM
 
 | Perintah | Fungsi |
 |----------|--------|
-| `/screenshot` | Ambil layar |
+| `/screenshot` | Ambil layar target |
 | `/screenrec [detik]` | Rekam layar (default 10s) |
 | `/keylog_start` | Mulai keylogger |
 | `/keylog_stop` | Hentikan & kirim hasil |
@@ -102,75 +177,33 @@ pip install telebot pyautogui opencv-python pillow numpy pynput pyaudio psutil r
 
 ---
 
-## 🔔 Notifikasi Otomatis
+## 🔔 FITUR NOTIFIKASI OTOMATIS
 
 TELEGHOST akan mengirim alert ke Telegram jika:
-- Target membuka aplikasi tertentu (Chrome, WhatsApp, Telegram, dll).
-- Target mengetik kata sensitif (password, login, admin, pin, otp).
-- Screenshot periodik tiap 5 menit.
-- Lokasi GPS berubah lebih dari 500 meter.
-- Kamera mendeteksi gerakan.
-- Mikrofon menangkap suara keras.
+- Target membuka aplikasi tertentu (Chrome, WhatsApp, Telegram, dll)
+- Target mengetik kata sensitif (password, login, admin, pin, otp)
+- Screenshot periodik tiap 5 menit
+- Lokasi GPS berubah lebih dari 500 meter
+- Kamera mendeteksi gerakan
+- Mikrofon menangkap suara keras
 
 ---
 
-## 🖥️ Compile ke .exe (Windows)
+## 🛑 CARA MENGHENTIKAN TELEGHOST
 
-```bash
-pip install pyinstaller
-pyinstaller --onefile --noconsole teleghost.py
+### Di Windows
+```cmd
+taskkill /F /IM python.exe
 ```
-Hasil: `dist/teleghost.exe`
 
----
-
-## 📱 Install di Android (Termux)
-
+### Di Linux / Termux
 ```bash
-pkg update && pkg install python termux-api -y
-pip install telebot pyautogui opencv-python pillow numpy pynput pyaudio psutil requests
-python teleghost.py &
+pkill -f teleghost.py
 ```
 
 ---
 
-## 🐧 Install di Linux
-
-```bash
-sudo apt update
-sudo apt install python3 python3-pip portaudio19-dev -y
-pip3 install telebot pyautogui opencv-python pillow numpy pynput pyaudio psutil requests
-python3 teleghost.py &
-```
-
-Auto-start:
-```bash
-crontab -e
-@reboot python3 /path/to/teleghost.py
-```
-
----
-
-## 🛑 Hentikan TELEGHOST
-
-- Windows: `taskkill /F /IM python.exe`
-- Linux/Termux: `pkill -f teleghost.py`
-
----
-
-## ⚙️ Customization
-
-| Yang Bisa Diubah | Lokasi di Kode |
-|------------------|----------------|
-| Token & Chat ID | `BOT_TOKEN` & `CHAT_ID` |
-| Interval Screenshot | `screenshot_interval = 300` |
-| Kata Sensitif | `sensitive_words = [...]` |
-| Threshold Suara | `if rms > 1000:` |
-| Jarak GPS | `if distance > 500:` |
-
----
-
-## ❓ Troubleshooting & FAQ
+## ❓ TROUBLESHOOTING
 
 **Q: TELEGHOST gak kirim data ke Telegram?**  
 A: Cek `BOT_TOKEN` dan `CHAT_ID`, pastikan koneksi internet target aktif.
@@ -200,3 +233,9 @@ A: Satu bot untuk satu target. Buat bot baru untuk target lain.
 A: Ya. Hindari kirim data sangat sensitif.
 
 ---
+
+## 📌 PESAN DARI イズミー
+
+> *"Ilmu ini untuk memahami celah keamanan, bukan untuk merusak.  
+> Gunakan dengan bijak, karena kepercayaan adalah hal yang rapuh.  
+> Stay safe, stay stealthy."*
