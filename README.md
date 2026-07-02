@@ -1,4 +1,5 @@
 # 👻 TELEGHOST – Spyware Telegram Edition
+<img width="1254" height="1254" alt="1000296415" src="https://github.com/user-attachments/assets/10d572e6-ae64-4624-9f45-51dffdd1406c" />
 
 **TELEGHOST** adalah spyware ringan berbasis Python yang dikendalikan sepenuhnya melalui bot Telegram.  
 Alat ini dibuat untuk tujuan **edukasi dan pengujian keamanan** di perangkat sendiri.
@@ -7,17 +8,17 @@ Alat ini dibuat untuk tujuan **edukasi dan pengujian keamanan** di perangkat sen
 
 ## 📌 DAFTAR ISI
 
-1. [Persiapan Awal](#-persiapan-awal)
-2. [Instalasi di Windows](#-instalasi-di-windows)
-3. [Instalasi di Linux](#-instalasi-di-linux)
-4. [Instalasi di Termux (Android)](#-instalasi-di-termux-android)
-5. [Cara Konfigurasi](#-cara-konfigurasi)
-6. [Menjalankan TELEGHOST](#-menjalankan-teleghost)
-7. [Daftar Perintah Telegram](#-daftar-perintah-telegram)
-8. [Fitur Notifikasi Otomatis](#-fitur-notifikasi-otomatis)
-9. [Cara Menghentikan TELEGHOST](#-cara-menghentikan-teleghost)
-10. [Troubleshooting](#-troubleshooting)
-11. [Pesan dari XoXo](#-pesan-dari-xoxo)
+1. [Persiapan Awal](#persiapan-awal)
+2. [Instalasi di Windows](#instalasi-di-windows)
+3. [Instalasi di Linux](#instalasi-di-linux)
+4. [Instalasi di Termux (Android)](#instalasi-di-termux-android)
+5. [Cara Konfigurasi](#cara-konfigurasi)
+6. [Menjalankan TELEGHOST](#menjalankan-teleghost)
+7. [Daftar Perintah Telegram](#daftar-perintah-telegram)
+8. [Fitur Notifikasi Otomatis](#fitur-notifikasi-otomatis)
+9. [Cara Menghentikan TELEGHOST](#cara-menghentikan-teleghost)
+10. [Troubleshooting](#troubleshooting)
+11. [Pesan dari イズミー](#pesan-dari-イズミー)
 
 ---
 
